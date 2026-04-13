@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "photo-location-days"
+version = "0.1.0"
+description = "Count the days you spent in each state/country using your macOS Photos library GPS metadata"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    "osxphotos>=0.68",
+    "reverse_geocoder>=1.5",
+]
+
+[project.scripts]
+photo-location-days = "photo_location_days:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["photo_location_days*"]

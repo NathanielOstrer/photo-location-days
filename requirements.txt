@@ -1,0 +1,2 @@
+osxphotos>=0.68
+reverse_geocoder>=1.5
