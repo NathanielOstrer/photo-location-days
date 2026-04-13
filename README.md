@@ -81,6 +81,30 @@ python3 photo_location_days.py --max-gap 14
 | `--sort` | `count` | `count` (most days first) or `date` (chronological) |
 | `--max-gap DAYS` | `7` | Gap-fill window in days; `0` to disable |
 
+## GUI App
+
+### Run directly (no build needed)
+
+```bash
+python3 gui.py
+```
+
+A window opens with fields for all CLI options. Results appear in the text area as the analysis runs.
+
+### Build a standalone macOS .app
+
+```bash
+./build_app.sh
+```
+
+This uses PyInstaller to produce `dist/Photo Location Days.app`. After building:
+
+1. **Grant Full Disk Access** to the `.app` in:
+   System Settings → Privacy & Security → Full Disk Access
+2. Launch `dist/Photo Location Days.app` directly — no Python installation required.
+
+> The `.app` bundle is ~200-300 MB and is distributed via GitHub Releases, not committed to the repository.
+
 ## Running tests
 
 ```bash
