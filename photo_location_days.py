@@ -40,11 +40,13 @@ def geocode_batch(coords):
     return rg.search(coords, mode=1, verbose=False)  # mode=1 = faster single-thread
 
 
-def build_location_days(photos, group_by="state", year=None):
+def build_location_days(photos, group_by="state", year=None, since=None, until=None):
     """
     Returns a dict: location_name -> set of date objects.
     group_by: "state" | "country" | "both"
     year: int or None — if set, only include photos from that year
+    since: date or None — if set, only include photos on/after this date
+    until: date or None — if set, only include photos on/before this date
     """
     # Collect photos that have GPS + date
     gps_photos = []
@@ -52,6 +54,12 @@ def build_location_days(photos, group_by="state", year=None):
         if p.location and p.date:
             if year and p.date.year != year:
                 continue
+            if since or until:
+                d = p.date.date()
+                if since and d < since:
+                    continue
+                if until and d > until:
+                    continue
             lat, lon = p.location
             if lat is not None and lon is not None:
                 gps_photos.append((p, lat, lon))
@@ -185,13 +193,23 @@ def _split_spans(days):
     return spans
 
 
+def _fmt_range(span, show_year):
+    """Format the first/last date of a sorted span, with years when needed."""
+    fmt = "%b %-d, %Y" if show_year else "%b %-d"
+    first, last = span[0].strftime(fmt), span[-1].strftime(fmt)
+    return first if first == last else f"{first} – {last}"
+
+
 def print_report(location_days, top=None, group_by="state", sort_by="count"):
     if not location_days:
         print("\nNo location data to report.")
         return
 
     label = {"state": "State / Region", "country": "Country", "both": "Location"}[group_by]
-    total_located_days = len(set(d for days in location_days.values() for d in days))
+    all_days = set(d for days in location_days.values() for d in days)
+    total_located_days = len(all_days)
+    # Without years, a report spanning several years reads as nonsense
+    show_year = min(all_days).year != max(all_days).year
 
     print()
 
@@ -208,10 +226,7 @@ def print_report(location_days, top=None, group_by="state", sort_by="count"):
         print(f"{'#':<5}  {label:<35}  {'Days':>6}  Date range")
         print("-" * 75)
         for i, (loc, span) in enumerate(rows, 1):
-            first = span[0].strftime("%b %-d")
-            last  = span[-1].strftime("%b %-d")
-            date_range = first if first == last else f"{first} – {last}"
-            print(f"{i:<5}  {loc:<35}  {len(span):>6}  {date_range}")
+            print(f"{i:<5}  {loc:<35}  {len(span):>6}  {_fmt_range(span, show_year)}")
 
     else:
         ranked = sorted(location_days.items(), key=lambda x: len(x[1]), reverse=True)
@@ -222,14 +237,19 @@ def print_report(location_days, top=None, group_by="state", sort_by="count"):
         print("-" * 75)
         for i, (loc, days) in enumerate(ranked, 1):
             sorted_days = sorted(days)
-            first = sorted_days[0].strftime("%b %-d")
-            last  = sorted_days[-1].strftime("%b %-d")
-            date_range = first if first == last else f"{first} – {last}"
-            print(f"{i:<5}  {loc:<35}  {len(days):>6}  {date_range}")
+            print(f"{i:<5}  {loc:<35}  {len(days):>6}  {_fmt_range(sorted_days, show_year)}")
 
     print("-" * 75)
     print(f"       {'Total unique located days':<35}  {total_located_days:>6}")
     print()
+
+
+def _parse_date(s):
+    """argparse type for YYYY-MM-DD."""
+    try:
+        return date.fromisoformat(s)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"expected YYYY-MM-DD, got {s!r}")
 
 
 def main():
@@ -244,6 +264,10 @@ def main():
                         help="Group by state/region (default), country, or both")
     parser.add_argument("--year", type=int, default=None,
                         help="Filter to a specific year, e.g. --year 2026")
+    parser.add_argument("--since", type=_parse_date, default=None, metavar="YYYY-MM-DD",
+                        help="Only include photos on or after this date, e.g. --since 2021-08-01")
+    parser.add_argument("--until", type=_parse_date, default=None, metavar="YYYY-MM-DD",
+                        help="Only include photos on or before this date")
     parser.add_argument("--sort", choices=["count", "date"], default="count",
                         help="Sort by day count (default) or chronological first appearance")
     parser.add_argument("--max-gap", type=int, default=7, metavar="DAYS",
@@ -259,7 +283,8 @@ def main():
         print("  System Settings → Privacy & Security → Full Disk Access → enable Terminal")
         sys.exit(1)
 
-    location_days = build_location_days(photos, group_by=args.group, year=args.year)
+    location_days = build_location_days(photos, group_by=args.group, year=args.year,
+                                        since=args.since, until=args.until)
     if args.max_gap > 0:
         location_days = infer_missing_days(location_days, max_gap=args.max_gap)
     print_report(location_days, top=args.top, group_by=args.group, sort_by=args.sort)

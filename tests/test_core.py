@@ -144,6 +144,47 @@ class TestBuildLocationDays:
         assert date(2023, 1, 1) not in result["California"]
         assert date(2024, 1, 1) in result["California"]
 
+    def test_since_filter(self, capsys):
+        photos = [
+            FakePhoto(34.05, -118.24, date(2021, 7, 31)),
+            FakePhoto(34.05, -118.24, date(2021, 8, 1)),
+            FakePhoto(34.05, -118.24, date(2024, 1, 1)),
+        ]
+        geo = [make_geo("US", "California")] * 3
+        result = self._run(photos, geo, group_by="state", since=date(2021, 8, 1))
+        assert result["California"] == {date(2021, 8, 1), date(2024, 1, 1)}
+
+    def test_since_boundary_is_inclusive(self, capsys):
+        photos = [FakePhoto(34.05, -118.24, date(2021, 8, 1))]
+        geo = [make_geo("US", "California")]
+        result = self._run(photos, geo, group_by="state", since=date(2021, 8, 1))
+        assert date(2021, 8, 1) in result["California"]
+
+    def test_until_filter_inclusive(self, capsys):
+        photos = [
+            FakePhoto(34.05, -118.24, date(2024, 6, 30)),
+            FakePhoto(34.05, -118.24, date(2024, 7, 1)),
+        ]
+        geo = [make_geo("US", "California")] * 2
+        result = self._run(photos, geo, group_by="state", until=date(2024, 6, 30))
+        assert result["California"] == {date(2024, 6, 30)}
+
+    def test_since_and_until_combined(self, capsys):
+        photos = [
+            FakePhoto(34.05, -118.24, date(2021, 1, 1)),
+            FakePhoto(34.05, -118.24, date(2022, 5, 5)),
+            FakePhoto(34.05, -118.24, date(2025, 1, 1)),
+        ]
+        geo = [make_geo("US", "California")] * 3
+        result = self._run(photos, geo, group_by="state",
+                           since=date(2022, 1, 1), until=date(2022, 12, 31))
+        assert result["California"] == {date(2022, 5, 5)}
+
+    def test_since_excludes_everything(self, capsys):
+        photos = [FakePhoto(34.05, -118.24, date(2020, 1, 1))]
+        result = self._run(photos, [], group_by="state", since=date(2021, 8, 1))
+        assert result == {}
+
     def test_none_location_skipped(self, capsys):
         photos = [FakePhoto(None, None, date(2024, 6, 1))]
         result = self._run(photos, [], group_by="state")
@@ -250,3 +291,25 @@ class TestPrintReport:
     def test_empty_input(self):
         output = self._capture({})
         assert "No location data" in output
+
+    def test_single_year_omits_year_in_range(self):
+        data = {"Texas": {date(2024, 1, 1), date(2024, 3, 1)}}
+        output = self._capture(data, sort_by="count")
+        assert "Jan 1 – Mar 1" in output
+        assert "2024" not in output
+
+    def test_multi_year_shows_year_in_range(self):
+        data = {"Texas": {date(2021, 8, 1), date(2024, 3, 1)}}
+        output = self._capture(data, sort_by="count")
+        assert "Aug 1, 2021 – Mar 1, 2024" in output
+
+    def test_multi_year_single_day_location(self):
+        data = {
+            "Texas": {date(2021, 8, 1)},
+            "Japan": {date(2024, 3, 1)},
+        }
+        output = self._capture(data, sort_by="count")
+        # Single-day locations collapse to one date, not a range
+        assert "Aug 1, 2021" in output
+        assert "Mar 1, 2024" in output
+        assert "–" not in output

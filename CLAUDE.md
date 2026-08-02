@@ -9,10 +9,15 @@ days the user spent in each US state or country. macOS-only (requires osxphotos)
   data-processing functions (`load_photos`, `build_location_days`,
   `infer_missing_days`, `print_report`) and a `main()` that uses argparse.
   The CLI remains fully functional and unchanged.
+  Date filtering is layered: `--year` (single year) and `--since`/`--until`
+  (inclusive bounds, `YYYY-MM-DD`) can be combined; all are applied in
+  `build_location_days`. `print_report` includes years in the "Date range"
+  column only when the data spans more than one calendar year.
 - **`gui.py`** — tkinter GUI wrapper. Imports functions directly from
   `photo_location_days.py`, redirects `sys.stdout` to a `ScrolledText` widget
   so the existing `print()` calls appear in the GUI, and runs analysis in a
-  background thread to keep the UI responsive.
+  background thread to keep the UI responsive. It exposes `--year` but **not**
+  `--since`/`--until` — those are CLI-only for now.
 
 ## Key dependencies
 | Package | Purpose |
@@ -22,14 +27,21 @@ days the user spent in each US state or country. macOS-only (requires osxphotos)
 | `tkinter` | GUI (ships with Python — no extra install needed) |
 | `pytest` | Tests |
 
+## Virtual environment
+Dependencies are installed in `.venv/`. Always activate before running anything:
+```bash
+source .venv/bin/activate
+```
+
 ## How to run
 ```bash
 # CLI
-python3 photo_location_days.py [--library PATH] [--top N] [--group state|country|both] \
-                                [--year YYYY] [--sort count|date] [--max-gap DAYS]
+python photo_location_days.py [--library PATH] [--top N] [--group state|country|both] \
+                               [--year YYYY] [--since YYYY-MM-DD] [--until YYYY-MM-DD] \
+                               [--sort count|date] [--max-gap DAYS]
 
 # GUI (directly, no build needed)
-python3 gui.py
+python gui.py
 ```
 
 ## How to build the .app

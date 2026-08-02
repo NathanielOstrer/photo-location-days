@@ -60,6 +60,10 @@ python3 photo_location_days.py --group both
 # Filter to a single year
 python3 photo_location_days.py --year 2024
 
+# Filter to an open-ended or closed date range
+python3 photo_location_days.py --since 2021-08-01
+python3 photo_location_days.py --since 2021-08-01 --until 2023-12-31
+
 # Sort chronologically instead of by day count
 python3 photo_location_days.py --sort date
 
@@ -78,6 +82,8 @@ python3 photo_location_days.py --max-gap 14
 | `--top N` | all | Show only the top N locations |
 | `--group` | `state` | `state`, `country`, or `both` |
 | `--year YYYY` | all years | Filter to a specific year |
+| `--since YYYY-MM-DD` | none | Only photos on or after this date (inclusive) |
+| `--until YYYY-MM-DD` | none | Only photos on or before this date (inclusive) |
 | `--sort` | `count` | `count` (most days first) or `date` (chronological) |
 | `--max-gap DAYS` | `7` | Gap-fill window in days; `0` to disable |
 
